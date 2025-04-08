@@ -51,6 +51,12 @@ std::vector<char> getBinaryPayload(const std::string &filename, bool &success) {
     return payload;
 }
 
+// Is the block in the payload
+bool isBlockInPayload(const std::vector<char>& payload, const std::vector<char>& block) {
+    auto it = std::search(payload.begin(), payload.end(), block.begin(), block.end());
+    return it != payload.end();
+}
+
 // Moved from Deserialiser.hxx
 std::vector<char> findLargestIterationBlock(const std::vector<char>& payload) {
     if (payload.empty())
@@ -110,18 +116,40 @@ std::vector<char> findLargestIterationBlock(const std::vector<char>& payload) {
         if (st[i].len >= 4 && st[i].cnt > 1) {
             int score = st[i].len * st[i].cnt * st[i].cnt;
             if (score > bestScore) {
-                bestScore = score;
-                bestState = i;
-                bestLen = st[i].len;
+                int pos = st[i].firstPos;
+                int start = pos - st[i].len + 1;
+                bool containsHashtag = false;
+                for (int j = start; j <= pos; ++j) {
+                    if (payload[j] == '#') {
+                        containsHashtag = true;
+                        break;
+                    }
+                }
+                if (!containsHashtag) {
+                    bestScore = score;
+                    bestState = i;
+                    bestLen = st[i].len;
+                }
             }
         }
     }
-    if (bestState == -1)
+    if (bestState == -1 || bestLen < 4)
         return {};
 
     int pos = st[bestState].firstPos;
     int start = pos - bestLen + 1;
     return std::vector<char>(payload.begin() + start, payload.begin() + pos + 1);
+}
+
+// Replace any occurence of a n size block by a n size block as parameter
+void replaceBlock(std::vector<char>& payload, const std::vector<char>& block, const std::string& replacement) {
+    auto it = std::search(payload.begin(), payload.end(), block.begin(), block.end());
+    while (it != payload.end()) {
+        it = payload.erase(it, it + block.size());
+        it = payload.insert(it, replacement.begin(), replacement.end());
+        std::advance(it, replacement.size());
+        it = std::search(it, payload.end(), block.begin(), block.end());
+    }
 }
 
 // New method: Read the entire .bin file into a char vector
@@ -137,14 +165,26 @@ std::vector<char> readBinaryFile(const std::string &filename) {
 }
 
 // New method: Write a char vector to a .bin file
-bool writeBinaryFile(const std::string &filename, const std::vector<char> &data) {
-    std::ofstream outfile(filename, std::ios::binary);
+bool writeBinaryFile(const std::string &filename, const std::vector<char> &data, bool append = false) {
+    std::ofstream outfile(filename, append ? std::ios::binary | std::ios::app : std::ios::binary);
     if (!outfile) {
         std::cerr << "Erreur d'ouverture lors de l'écriture de " << filename << std::endl;
         return false;
     }
     outfile.write(data.data(), data.size());
-    return outfile.good();
+    if (!outfile) {
+        std::cerr << "Erreur lors de l'écriture des données dans " << filename << std::endl;
+        return false;
+    }
+    return true;
+}
+
+void printIterationBlock(const std::vector<char>& block) {
+    std::cout << "Bloc d'itération trouvé : |";
+    for (char c : block) {
+        std::cout << c;
+    }
+    std::cout << "|" << std::endl;
 }
 
 // Main function to demonstrate the functionality
@@ -165,21 +205,32 @@ int main(int argc, char* argv[]) {
 
     // Find the largest iteration block
     std::vector<char> largestBlock = findLargestIterationBlock(payload);
-    if (largestBlock.empty()) {
-        std::cerr << "Aucun bloc d'itération trouvé." << std::endl;
-        return 1;
+    while (!largestBlock.empty()) {
+        // Replace the largest block in the payload
+        int balise = 0;
+        std::string replacement = "#" + std::to_string(balise) + "#";
+        while (isBlockInPayload(payload, std::vector<char>(replacement.begin(), replacement.end())))
+        {
+            balise++;
+            replacement = "#" + std::to_string(balise) + "#";
+        }
+        // Replace the block in the payload
+        replaceBlock(payload, largestBlock, replacement);
+        // Print the replaced block
+        printIterationBlock(largestBlock);
+        
+        // add hashtag at the end of the largestBlock
+        largestBlock.push_back('#');
+        writeBinaryFile(outputFile + ".prs", largestBlock, true);
+        // Find the next largest block
+        largestBlock = findLargestIterationBlock(payload);
     }
 
     // Write the largest block to the std out
-    if (!writeBinaryFile(outputFile, largestBlock)) {
+    if (!writeBinaryFile(outputFile, payload)) {
         std::cerr << "Erreur lors de l'écriture du fichier binaire." << std::endl;
         return 1;
     }
     std::cout << "Le bloc d'itération le plus important a été écrit dans " << outputFile << std::endl;
-    std::cout << "Bloc d'itération le plus important (taille * récurrence): |";
-    for (const auto &ch : largestBlock) {
-        std::cout << ch;
-    }
-    std::cout << "|" << std::endl;
     return 0;
 }
