@@ -33,4 +33,6 @@ else
     # Remove TREETMPFILE after processing
     rm "$TREETMPFILE"
     [ "$VERBOSE" = true ] && echo -e "\033[0;31m  $TREETMPFILE removed.\033[0m"
+    # echo - "Done."
+    echo -e "\033[0;32mAll trash files have been deleted.\033[0m"
 fi

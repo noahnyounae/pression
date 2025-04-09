@@ -14,7 +14,7 @@ Welcome to **Pression** – a streamlined solution for automated file compressio
    ```
 3. Compile the project:
    ```
-   ./comp
+   ./comp.sh
    ```
 4. Observe the results!
 
