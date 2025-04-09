@@ -4,7 +4,7 @@
 #include <iterator>
 #include <iostream>
 
-void Serialiser::run(const std::string &inputFile) {
+void Serialiser::run(const std::string &inputFile, const std::string &outputFile) {
     // Lecture du contenu du fichier texte
     std::ifstream infile(inputFile, std::ios::binary);
     if (!infile) {
@@ -21,7 +21,7 @@ void Serialiser::run(const std::string &inputFile) {
     record.length = text.size();
     record.data.assign(text.begin(), text.end());
 
-    if (writeRecordToFile(record, "data.bin")) {
+    if (writeRecordToFile(record, outputFile.c_str())) {
         std::cout << "Transformation du fichier texte en format binaire réussie." << std::endl;
     }
 }
@@ -32,7 +32,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     std::string inputFile = argv[1];
+    std::string outFile;
+    size_t pos = inputFile.find_last_of('.');
+    if (pos != std::string::npos)
+        outFile = inputFile.substr(0, pos);
+    else
+        outFile = inputFile;
+    outFile += ".bin";
     Serialiser s;
-    s.run(inputFile);
+    s.run(inputFile, outFile);
     return 0;
 }

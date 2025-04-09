@@ -13,7 +13,7 @@ struct BinaryRecord {
 
 class Serialiser {
 public:
-    void run(const std::string &inputFile);
+    void run(const std::string &inputFile, const std::string &outputFile);
 };
 
 #endif // SERIALISER_HH

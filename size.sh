@@ -12,4 +12,4 @@ if [ ! -f "$filename" ]; then
 fi
 
 filesize=$(stat -c %s "$filename")
-echo "Size of $filename is $filesize bytes"
+echo -e "\e[34mSize of $filename is $filesize bytes\e[0m"
